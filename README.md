@@ -666,7 +666,7 @@ bool HizCullBound(GlobalValue gvalue,float3 minPos, float3 maxPos)
 ```
 另外我在做这个项目时产生一个疑问，算法要求包围盒EF面的长度刚好覆盖2x2个HizMap的像素。但是长度是2x2，不代表一定能覆盖2x2个像素，也许能覆盖3x3个像素，如下图：<br>
 
-![HizCull4.png#auto#500px#center](https://km.woa.https://github.com/lijundacom/LeoGPUDriven/blob/main/Doc/hizcull04.jpg)<br>
+![HizCull4.png#auto#500px#center](https://github.com/lijundacom/LeoGPUDriven/blob/main/Doc/hizcull04.jpg)<br>
 
 右图蓝色包围盒，占了3x3个像素。所以我认为算法的EF面的长度应该是小于等于1x1个像素，这样才能保证正好占据HizMap的2x2个像素，如右图中红色包围盒。
 
@@ -772,10 +772,10 @@ void GetLoadTrans
 其中步骤1、2、4、5比较简单，我只讲一下步骤3，不同LOD的Mesh接缝问题处理。
 如果不处理接缝，当不同LOD的Patch相邻时，就会产生下图中的问题：<br>
 
-![接缝.png#300px#auto#center](https://km.woa.https://github.com/lijundacom/LeoGPUDriven/blob/main/Doc/Mesh_stich.webp)<br>
+![接缝.png#300px#auto#center](https://github.com/lijundacom/LeoGPUDriven/blob/main/Doc/Mesh_stich.webp)<br>
 解决方法就是，偏移顶点，如下图:<br>
 
-![接缝2.png#auto#500px#center](https://km.woa.https://github.com/lijundacom/LeoGPUDriven/blob/main/Doc/mesh_stich2.jpg)<br>
+![接缝2.png#auto#500px#center](https://github.com/lijundacom/LeoGPUDriven/blob/main/Doc/mesh_stich2.jpg)<br>
 
 将左图中红色方框中的顶点偏移到蓝色圆圈的位置。就得到了右图。不同LOD之间的Mesh就没有接缝了。Patch上下左右相邻的Patch的LOD已经在6.4章节的结尾记录在mRenderPatchMap了，计算时直接获取就好了。接缝的处理代码如下：
 
@@ -839,7 +839,7 @@ inline void FixLODConnectSeam(inout float4 vertex, uint2 PatchXYInNode, uint Nod
 - 3）阴影的处理
 如果使用Unity的默认管线，Unity帮我们处理阴影，这个过程是不需要我们关心的。但是使用GUPDriven管线，
 使用了Graphics.DrawMeshInstancedIndirect来绘制地形。Graphics.DrawMeshInstancedIndirect中的物体是摄像机视角下的物体。而渲染阴影的物体是光源视角下的物体。这2个集合并不完全重合。所以，需要我们自己来计算光源视角下，哪些物体会投影阴影到屏幕中。计算直接翻倍了。如果我们再使用了级联阴影等复杂的计算，我们要将视锥体分成几段，计算每段中投影阴影的物体集合，每段对应的集合提交一次Graphics.DrawMeshInstancedIndirect。算法变得麻烦了，性能消耗也变多了。
-- 4) GPUDriven可渲染的其他内容
+- 4） GPUDriven可渲染的其他内容
 事实上，GPUDriven管线功能开发完毕后，除了可以渲染地形外，植被、建筑等场景物件一般也是一起放进GPUDriven管线里渲染的。场景物件还可以用Cluster来拆分。
 
 
