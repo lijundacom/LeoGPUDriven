@@ -48,7 +48,7 @@ public class DebugText : MonoBehaviour
         angle.x = 0;
         mCamera.transform.eulerAngles = angle;
         Vector3 pos = mCamera.transform.position;
-        pos.y = 5;
+        pos.y = 65;
         mCamera.transform.position = pos;
     }
 
