@@ -1,0 +1,92 @@
+﻿#pragma kernel BuildHizMap
+
+#pragma multi_compile_local __ _REVERSE_Z
+
+#include "./TerrainFuncUtil.cginc"
+
+Texture2D<float> inputDepthMap; //2488 *1080
+uniform float4 inputDepthMapSize; //(2488 ,1080, 4096, 2048)
+
+groupshared float hiz_0[32][16];
+groupshared float hiz_1[16][8];
+groupshared float hiz_2[8][4];
+groupshared float hiz_3[4][2];
+
+RWTexture2D<float> HIZ_MAP_Mip0;//
+RWTexture2D<float> HIZ_MAP_Mip1;
+RWTexture2D<float> HIZ_MAP_Mip2;
+RWTexture2D<float> HIZ_MAP_Mip3;
+
+
+float GetHizDepth2X2(float depth0, float depth1, float depth2, float depth3)
+{
+#if _REVERSE_Z
+    return min(min(depth0, depth1),min(depth2, depth3));
+#else
+    return max(max(depth0, depth1), max(depth2, depth3));
+#endif
+}
+
+[numthreads(32, 16, 1)]
+void BuildHizMap(uint3 id : SV_DispatchThreadID, uint3 groupId : SV_GroupID, uint3 idInGroup : SV_GroupThreadID)
+{
+    //step1: 2488 *1080 -> 4096x2048 -> hiz_ping
+    float depth = 0;
+    
+    uint2 srcXY = floor(id.xy * 1.0 * inputDepthMapSize.xy / inputDepthMapSize.zw); // 2488 *1080 -> 4096x2048
+    depth = inputDepthMap.Load(uint3(srcXY, 0));
+ 
+    uint2 pix = uint2(idInGroup.x, idInGroup.y);
+    hiz_0[pix.x][pix.y] = depth;//32x16
+
+    GroupMemoryBarrierWithGroupSync();
+    //step2: hiz_ping(4096x2048) -> hiz_pang(2048x1024) -> output HIZ_MAP_Mip0;
+    
+    uint2 pix0, pix1, pix2, pix3;
+
+    pix = idInGroup.xy >> 1;//16x8
+    pix0 = pix * 2;
+    pix1 = pix * 2 + uint2(0, 1);
+    pix2 = pix * 2 + uint2(1, 0);
+    pix3 = pix * 2 + uint2(1, 1);
+    
+    depth = GetHizDepth2X2(hiz_0[pix0.x][pix0.y], hiz_0[pix1.x][pix1.y], hiz_0[pix2.x][pix2.y], hiz_0[pix3.x][pix3.y]);  
+
+    hiz_1[pix.x][pix.y] = depth;//16x8
+    HIZ_MAP_Mip0[id.xy>>1] = depth;//2048x1024
+    
+    GroupMemoryBarrierWithGroupSync();
+    //step3: hiz_pang(2048*1024) -> hiz_ping(1024*512) -> output HIZ_MAP_Mip1;
+    
+    pix = idInGroup.xy>>2;//8x4
+    pix0 = pix * 2;
+    pix1 = pix * 2 + uint2(0, 1);
+    pix2 = pix * 2 + uint2(1, 0);
+    pix3 = pix * 2 + uint2(1, 1);
+    depth = GetHizDepth2X2(hiz_1[pix0.x][pix0.y], hiz_1[pix1.x][pix1.y], hiz_1[pix2.x][pix2.y], hiz_1[pix3.x][pix3.y]);
+
+    hiz_2[pix.x][pix.y] = depth;//8x4
+    HIZ_MAP_Mip1[id.xy >>2] = depth; //1024x512
+    
+    GroupMemoryBarrierWithGroupSync();
+    //step3: hiz_ping(1024x512) -> hiz_pang(512x256) -> output HIZ_MAP_Mip2;
+    
+    pix = idInGroup.xy >>3;//4x2
+    pix0 = pix * 2;
+    pix1 = pix * 2 + uint2(0, 1);
+    pix2 = pix * 2 + uint2(1, 0);
+    pix3 = pix * 2 + uint2(1, 1);
+    depth = GetHizDepth2X2(hiz_2[pix0.x][pix0.y], hiz_2[pix1.x][pix1.y], hiz_2[pix2.x][pix2.y], hiz_2[pix3.x][pix3.y]);
+    hiz_3[pix.x][pix.y] = depth;//4x2
+    HIZ_MAP_Mip2[id.xy >>3] = depth; //512x256
+    
+    GroupMemoryBarrierWithGroupSync();
+    //step4: hiz_pang(1024x512) -> hiz_ping(512x256) -> output HIZ_MAP_Mip3;
+    pix = idInGroup.xy >>4;//2x1
+    pix0 = pix * 2;
+    pix1 = pix * 2 + uint2(0, 1);
+    pix2 = pix * 2 + uint2(1, 0);
+    pix3 = pix * 2 + uint2(1, 1);
+    depth = GetHizDepth2X2(hiz_3[pix0.x][pix0.y], hiz_3[pix1.x][pix1.y], hiz_3[pix2.x][pix2.y], hiz_3[pix3.x][pix3.y]);
+    HIZ_MAP_Mip3[id.xy >>4] = depth; //256x128
+}

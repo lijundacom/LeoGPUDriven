@@ -1,0 +1,59 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel BuildMinMaxHeightMapByHeightMap
+#pragma kernel BuildMinMaxHeightMapByMinMaxHeightMap
+
+Texture2D<float> heightMap;
+Texture2D<float2> inputMinMaxHeightMap;
+RWTexture2D<float2> outputMinMaxHeightMap;
+
+uint2 srcTexSize;
+uint2 destTexSize;
+
+[numthreads(16,16,1)]
+void BuildMinMaxHeightMapByHeightMap(uint3 id : SV_DispatchThreadID)
+{
+    float2 chunkSize = srcTexSize * 1.0 / destTexSize;
+    uint2 chunkXY = id.xy;
+    int2 headXY = floor(chunkXY * chunkSize);
+    int2 endXY = floor((chunkXY + 1) * chunkSize);
+    headXY = clamp(headXY, int2(0, 0), srcTexSize);
+    endXY = clamp(endXY, int2(0, 0), srcTexSize);
+    float minHeight = 8000;
+    float maxHeight = -8000;
+    for (int i = headXY.x; i < endXY.x;i++)
+    {
+        for (int j = headXY.y; j < endXY.y; j++)
+        {
+            uint3 sameXY = uint3(i, j, 0);
+            float height = heightMap.Load(sameXY);
+            minHeight = min(minHeight, height);
+            maxHeight = max(maxHeight, height);
+        }
+    }
+    outputMinMaxHeightMap[id.xy] = float2(minHeight, maxHeight);
+}
+
+
+[numthreads(1, 1, 1)]
+void BuildMinMaxHeightMapByMinMaxHeightMap(uint3 id : SV_DispatchThreadID)
+{
+    float2 chunkSize = float2(2,2);
+    uint2 chunkXY = id.xy;
+    int2 headXY = floor(chunkXY * chunkSize);
+    int2 endXY = floor((chunkXY + 1) * chunkSize);
+    headXY = clamp(headXY, int2(0, 0), srcTexSize);
+    endXY = clamp(endXY, int2(0, 0), srcTexSize);
+    float minHeight = 8000;
+    float maxHeight = -8000;
+    for (int i = headXY.x; i < endXY.x; i++)
+    {
+        for (int j = headXY.y; j < endXY.y; j++)
+        {
+            uint3 sameXY = uint3(i, j, 0);
+            float2 height = inputMinMaxHeightMap.Load(sameXY);
+            minHeight = min(minHeight, height.x);
+            maxHeight = max(maxHeight, height.y);
+        }
+    }
+    outputMinMaxHeightMap[id.xy] = float2(minHeight, maxHeight);
+}

@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Material
+  m_EditorClassIdentifier: 
+  m_GroupName: Material
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 898e9901f0a78c947a53b8f5a943ab30
+  m_SerializeEntries:
+  - m_GUID: 6e360d583667b524997b2b5349e8863b
+    m_Address: Assets/Material/GPUDriven_GpuDrivenTerrain.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bea37de21ddebc24188c78e22f2efc7d
+    m_Address: Assets/Material/Unlit_CopyDepthTexture.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8456532e3d269474f945101ddbab1411
+    m_Address: Assets/Material/TerrainDebug.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cca9b7ed7b3f8f144add0518a3bb4414
+    m_Address: Assets/Material/DefaultWhite.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: fa4089f3822403c459193f9ff4aeb187, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: f4bba7c9fcc240d43b8d43deded2f355, type: 2}
+    - {fileID: 11400000, guid: 756eda6ff3ab13c448a0eac8aefacf0f, type: 2}

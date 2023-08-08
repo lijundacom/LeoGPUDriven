@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: ComputeShader
+  m_EditorClassIdentifier: 
+  m_GroupName: ComputeShader
+  m_Data:
+    m_SerializedData: []
+  m_GUID: d79f5e3d57a79674c809a2fcfdbc99d7
+  m_SerializeEntries:
+  - m_GUID: 4423b2ebb0a32fa4a81f881d126f31dc
+    m_Address: Assets/ComputeShader/GpuDrivenTerrain.compute
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 87ede55e561237749b57d7a7d4340949
+    m_Address: Assets/ComputeShader/DataStructDefine.cginc
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9ec0872027a6d924c953c624bcb8ce6a
+    m_Address: Assets/ComputeShader/TerrainFuncUtil.cginc
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: daeb09d118bac9f4b870c34bec48e493
+    m_Address: Assets/ComputeShader/BuildHizMap.compute
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7688bff0dc50c4b438942a1c5fe54129
+    m_Address: Assets/ComputeShader/BuildMinMaxHeightMap.compute
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: fa4089f3822403c459193f9ff4aeb187, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: b33be750298830f4ea4087f9f607fa1e, type: 2}
+    - {fileID: 11400000, guid: 13ed40df9a5ba3249b1ff53b083977b9, type: 2}
