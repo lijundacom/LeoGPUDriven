@@ -1,0 +1,265 @@
+{
+    "m_SelectedDeviceId": "ad107b21",
+    "m_SelectedPackage": {
+        "deviceId": "ad107b21",
+        "name": "com.ljd.leogpudriven",
+        "processId": 7997,
+        "exited": false
+    },
+    "m_SelectedPriority": 0,
+    "m_KnownPackagesForSerialization": [
+        {
+            "deviceId": "ad107b21",
+            "name": "com.miui.home",
+            "processId": 3139,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 26665,
+            "exited": true
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 28395,
+            "exited": true
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 29903,
+            "exited": true
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 30419,
+            "exited": true
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 31353,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 32495,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 5250,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 12848,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 28619,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 29364,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 1834,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 5459,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 7524,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 8063,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 13095,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 27532,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 28284,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 30167,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 30684,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 31184,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 31641,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 31883,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 4160,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 4521,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 5508,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 5851,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 6295,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 6982,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 7596,
+            "exited": false
+        },
+        {
+            "deviceId": "ad107b21",
+            "name": "com.ljd.leogpudriven",
+            "processId": 7997,
+            "exited": false
+        }
+    ],
+    "m_Tags": {
+        "m_Entries": [
+            {
+                "m_Name": "Filter by all listed tags",
+                "m_Selected": false
+            },
+            {
+                "m_Name": "No Filter",
+                "m_Selected": true
+            },
+            {
+                "m_Name": "",
+                "m_Selected": false
+            },
+            {
+                "m_Name": "Tag Control...",
+                "m_Selected": false
+            },
+            {
+                "m_Name": "",
+                "m_Selected": false
+            },
+            {
+                "m_Name": "Unity",
+                "m_Selected": false
+            },
+            {
+                "m_Name": "CRASH",
+                "m_Selected": false
+            }
+        ]
+    },
+    "m_MemoryViewerState": {
+        "MemoryWindowHeight": 300.0,
+        "MemoryWindowWidth": 170.0,
+        "MemoryTypeEnabled": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+        ],
+        "MemoryGroup": 2,
+        "Behavior": 0
+    },
+    "m_FilterOptions": {
+        "m_Filter": "",
+        "m_UseRegularExpressions": false,
+        "m_MatchCase": false
+    },
+    "m_SymbolPaths": [],
+    "m_CaptureVideoSettings": {
+        "TimeLimitEnabled": false,
+        "TimeLimit": 180,
+        "VideoSizeEnabled": false,
+        "VideoSizeX": 1280,
+        "VideoSizeY": 720,
+        "BitRateEnabled": false,
+        "BitRateK": 20000,
+        "DisplayIdEnabled": false,
+        "DisplayId": ""
+    }
+}
