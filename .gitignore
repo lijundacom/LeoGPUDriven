@@ -1,0 +1,11 @@
+
+*.csproj
+.vs
+Library
+Logs
+obj
+Temp
+.vsconfig
+Packages/packages-lock.json
+*.sln
+/*.apk
