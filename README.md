@@ -1,3 +1,5 @@
+知乎链接：https://zhuanlan.zhihu.com/p/648843014
+
 # 1 前言
 最近阅读了[GDC|Terrain Rendering in 'Far Cry 5'](https://www.gdcvault.com/play/1025480/Terrain-Rendering-in-Far-Cry) 和[TGDC | 用技术诠释国风浪漫的归去来 ——《天涯明月刀》手游开发历程](https://mp.weixin.qq.com/s/p3lF-UHtnlSbziQgvEiqqA) 的文章后，想要自己尝试实现一下GPUDriven技术。
 
