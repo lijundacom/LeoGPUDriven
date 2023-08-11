@@ -167,11 +167,11 @@ void GetLoadTrans
     }
     if (patchXYInNode.x == gvalue.PATCH_NUM_IN_NODE - 1)
     {
-        patch.LodTrans.z = clamp(GetSectorLod(gvalue, scetorXY + int2(1, 0), myLod) - myLod, 0, gvalue.MIN_LOD);
+        patch.LodTrans.z = clamp(GetSectorLod(gvalue, scetorXY + int2(1 << myLod, 0), myLod) - myLod, 0, gvalue.MIN_LOD);
     }
     if (patchXYInNode.y == gvalue.PATCH_NUM_IN_NODE - 1)
     {
-        patch.LodTrans.w = clamp(GetSectorLod(gvalue, scetorXY + int2(0, 1), myLod) - myLod, 0, gvalue.MIN_LOD);
+        patch.LodTrans.w = clamp(GetSectorLod(gvalue, scetorXY + int2(0, 1 << myLod), myLod) - myLod, 0, gvalue.MIN_LOD);
     }
 }
 
