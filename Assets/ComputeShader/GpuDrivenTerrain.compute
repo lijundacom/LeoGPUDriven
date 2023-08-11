@@ -7,6 +7,7 @@
 #pragma kernel HizCull
 
 #pragma multi_compile_local __ _REVERSE_Z
+#pragma multi_compile_local __ _OPENGL_ES_3
 
 #include "UnityCG.cginc"
 #include "./DataStructDefine.cginc"
@@ -259,21 +260,19 @@ bool CompareDepth(float HizMapDepth, float obj_uvd_depth)
 #if _REVERSE_Z
     HizMapDepth = 1 - HizMapDepth;
 #endif
-    
-    return HizMapDepth > obj_uvd_depth;
+    return HizMapDepth >= obj_uvd_depth;
 }
 
 inline float3 CalPointUVD(GlobalValue gvalue, float4x4 VPMatrix, float3 pos)
 {
-    float4 clipSpace = mul(VPMatrix, float4(pos, 1));
+    float4 clipSpace = mul(VPMatrix, float4(pos, 1.0));
     float3 ndc = clipSpace.xyz / clipSpace.w;
     
-#if SHADER_API_GLES3
-    float3 uvd = (ndc + 1) * 0.5;
-#else
     float3 uvd;
     uvd.xy = (ndc.xy + 1) * 0.5;
     uvd.z = ndc.z;
+#if _OPENGL_ES_3
+    uvd.z = (ndc.z + 1) * 0.5;
 #endif
 #if _REVERSE_Z
     uvd.z = 1 - uvd.z;
@@ -308,8 +307,8 @@ Bound
     float3 minPosUVD = min(min(min(uvd0, uvd1), min(uvd2, uvd3)), min(min(uvd4, uvd5), min(uvd6, uvd7)));
     float3 maxPosUVD = max(max(max(uvd0, uvd1), max(uvd2, uvd3)), max(max(uvd4, uvd5), max(uvd6, uvd7)));
     Bound bound;
-    bound.maxPos = maxPosUVD;
-    bound.minPos = minPosUVD;
+    bound.maxPos = clamp(maxPosUVD, 0, 1);
+    bound.minPos = clamp(minPosUVD, 0, 1);
     return bound;
 }
 

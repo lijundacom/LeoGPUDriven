@@ -53,11 +53,24 @@ public class GPUDrivenTerrainImpl
 
         if (SystemInfo.usesReversedZBuffer)
         {
+            Debug.Log("EnableKeyword _REVERSE_Z");
             CS_GPUDrivenTerrain.EnableKeyword("_REVERSE_Z");
         }
         else
         {
+            Debug.Log("DisableKeyword _REVERSE_Z");
             CS_GPUDrivenTerrain.DisableKeyword("_REVERSE_Z");
+        }
+
+        if(SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES3)
+        {
+            Debug.Log("EnableKeyword _OPENGL_ES_3");
+            CS_GPUDrivenTerrain.EnableKeyword("_OPENGL_ES_3");
+        }
+        else
+        {
+            Debug.Log("DisableKeyword _OPENGL_ES_3");
+            CS_GPUDrivenTerrain.DisableKeyword("_OPENGL_ES_3");
         }
 
 
