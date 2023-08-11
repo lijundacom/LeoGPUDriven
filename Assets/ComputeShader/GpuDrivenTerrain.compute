@@ -320,6 +320,7 @@ bool HizCullPoint(int mip, uint2 mapsize_mip,float3 pos)
     float obj_depth = pos.z;
     //vulkan may be wrong
     uint2 ptXYInMap = uint2(floor(pos.x / mip_uv_step.x), floor(pos.y / mip_uv_step.y));
+    ptXYInMap = clamp(ptXYInMap, 0, mapsize_mip - 1);
     float scene_depth = HIZ_MAP.mips[mip][ptXYInMap];
     return CompareDepth(scene_depth, obj_depth);
 }
@@ -335,7 +336,7 @@ bool HizCullBound(GlobalValue gvalue,float3 minPos, float3 maxPos)
     uint2 hizmapsize = gvalue.hizMapSize;
     
     int sample_mip = max(objsize.x * hizmapsize.x, objsize.y * hizmapsize.y);
-    sample_mip = clamp(ceil(log2(sample_mip)),0,11);   
+    sample_mip = clamp(ceil(log2(sample_mip)), 0, log2(min(gvalue.hizMapSize.x, gvalue.hizMapSize.y))); //this is importent, mean hizmip max mip level
     
     float3 boundpos0 = float3(boundUVD.minPos.x , boundUVD.minPos.y , objDepth);
     float3 boundpos1 = float3(boundUVD.minPos.x , boundUVD.maxPos.y , objDepth);
