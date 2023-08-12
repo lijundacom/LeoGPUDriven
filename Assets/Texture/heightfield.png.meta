@@ -110,7 +110,7 @@ TextureImporter:
     buildTarget: Android
     maxTextureSize: 16384
     resizeAlgorithm: 0
-    textureFormat: 18
+    textureFormat: 63
     textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
