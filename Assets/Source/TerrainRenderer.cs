@@ -13,7 +13,9 @@ public class TerrainRenderer : MonoBehaviour
 
     public float LodJudgeFector = 100f;
 
-    
+    public Camera mTerrainCamera;
+
+    public Mesh cubeMesh;
 
     // Start is called before the first frame update
     void Start()
@@ -21,6 +23,8 @@ public class TerrainRenderer : MonoBehaviour
         Application.targetFrameRate = 200;
 
         TerrainDataManager.GetInstance().Reset();
+
+        TerrainDataManager.GetInstance().CubeMesh = cubeMesh;
 
         mGPUDrivenTerrainImpl.Init();
     }
@@ -42,33 +46,9 @@ public class TerrainRenderer : MonoBehaviour
             mGPUDrivenTerrainImpl.SetGlobaleValue();
 
             //初始化LODMIN时5x5的node
-            mGPUDrivenTerrainImpl.CopyInputBuffer();
+            mGPUDrivenTerrainImpl.UpdateViewChunk(mTerrainCamera);
 
-            //生成四叉树LOD化之后的Node列表
-            mGPUDrivenTerrainImpl.CreateLODNodeList();
-
-            //生成记录LOD的sector列表
-            mGPUDrivenTerrainImpl.CreateSectorLodMap();
-
-            //视锥裁剪
-            mGPUDrivenTerrainImpl.CalFrustumCulledPatchList();
-
-            //Node扩展成Patch
-            mGPUDrivenTerrainImpl.CreatePatch();
-
-            //Hiz遮挡剔除
-            mGPUDrivenTerrainImpl.CalHizCulledPatchList();
-
-            //执行commandbuffer
-            mGPUDrivenTerrainImpl.ExecuteCommand();
-
-            //将ComputeShader的计算结果更新到地形渲染shader
-            mGPUDrivenTerrainImpl.UpdateTerrainMaterialParams();
-
-            //绘制地形
             mGPUDrivenTerrainImpl.DrawTerrainInstance();
-
-            //mGPUDrivenTerrainImpl.UpdateDebugMaterialParams();
 
             //mGPUDrivenTerrainImpl.DrawDebugCubeInstance();
         }

@@ -6,8 +6,9 @@ Shader "Unlit/DebugShader"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "LightMode" = "UniversalForward"}
+        Tags { "RenderType"="Opaque" "LightMode" = "UniversalPipeline"}
         LOD 100
+        Cull Off
         Blend SrcAlpha OneMinusSrcAlpha
         Pass
         {
@@ -42,27 +43,23 @@ Shader "Unlit/DebugShader"
                 v2f o;
                 float4 inVertex = v.vertex;
                 NodePatchStruct nodePatchStruct = DebugCubeList[v.instanceID];
-                uint2 NodeXY = nodePatchStruct.NodeXY;
+                uint2 NodeXY = nodePatchStruct.ChunkXY;
                 uint LOD = nodePatchStruct.LOD;
-                uint2 PatchXY = nodePatchStruct.PatchXY;
                 GlobalValue gValue = GetGlobalValue(globalValueList);
-                float2 nodePos = GetNodeCenerPos(gValue, NodeXY, LOD);
-                float2 patchPosInNode = GetPatchPosInNode(gValue, PatchXY, LOD);
-                float2 patchWorldPos = nodePos + patchPosInNode;
-                
-                float centerY = (nodePatchStruct.boundMax.y + nodePatchStruct.boundMin.y) * 0.5;
+                float2 nodePos = GetNodeCenerPos(gValue, NodeXY, LOD);                
                 float3 center = float3(nodePos.x, 0, nodePos.y);
-                //float scale = GetNodeSizeInLod(gValue, LOD) / gValue.PATCH_NUM_IN_NODE;
                 float3 scale = nodePatchStruct.boundMax - nodePatchStruct.boundMin;
-                inVertex.xyz = inVertex.xyz * scale * 0.9 + center;
+                inVertex.xyz = inVertex.xyz * scale * 0.9;
+                inVertex.xyz = inVertex.xyz + center;
                 o.vertex = UnityObjectToClipPos(inVertex.xyz);
+                //o.vertex = UnityObjectToClipPos(v.vertex);
                 if (LOD == 0)
                 {
                     o.color = float3(1, 0, 0);
                 }
                 else
                 {
-                    o.color = float3(0, (5 - LOD)*0.2 , 0);
+                    o.color = float3(1, (5 - LOD)*0.2 , 0);
                 }
                 return o;
             }

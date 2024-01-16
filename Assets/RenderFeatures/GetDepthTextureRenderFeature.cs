@@ -209,10 +209,10 @@ public class BuildHizMapRenderFeature : ScriptableRendererFeature
     /// <inheritdoc/>
     public override void Create()
     {
-        m_ScriptablePass = new BuildHizMapRenderPass();
+        //m_ScriptablePass = new BuildHizMapRenderPass();
 
         // Configures where the render pass should be injected.
-        m_ScriptablePass.renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
+        //m_ScriptablePass.renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
     }
 
     // Here you can inject one or multiple render passes in the renderer.
@@ -228,12 +228,12 @@ public class BuildHizMapRenderFeature : ScriptableRendererFeature
         {
             return;
         }
-        renderer.EnqueuePass(m_ScriptablePass);
+       // renderer.EnqueuePass(m_ScriptablePass);
     }
 
     protected override void Dispose(bool disposing)
     {
-        m_ScriptablePass.Dispose();
+        //m_ScriptablePass.Dispose();
     }
 }
 

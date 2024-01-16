@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -11,11 +12,11 @@ using UnityEngine.Rendering;
 /// </summary>
 public class TerrainDataManager 
 {
-    public static string HEIGHT_MAP_FILE = "Assets/Texture/heightfield.png";
+    public static string HEIGHT_MAP_FILE = "Assets/Texture/terrain_stage_texture.png";
     public static string CS_GPU_DRIVEN_TERRAIN = "Assets/ComputeShader/GpuDrivenTerrain.compute";
     public static string CS_BUILD_HIZ_MAP = "Assets/ComputeShader/BuildHizMap.compute";
-    public static string GPU_TERRAIN_MATERIAL = "Assets/Material/GPUDriven_GpuDrivenTerrain.mat";
-    public static string MIN_MAX_HEIGHT_MAP = "Assets/Texture/MinMaxHeightMap.asset";
+    public static string GPU_TERRAIN_MATERIAL = "Assets/Shader/Shader Graphs_GPUDrivenHexTerrain.mat";
+    public static string MIN_MAX_HEIGHT_MAP = "Assets/Texture/HexMinMaxStageLodMap.asset";
     private static string Addr_CopyDepthTexture = "Assets/Material/Unlit_CopyDepthTexture.mat";
     private static string Addr_TerrainDebugMat = "Assets/Material/TerrainDebug.mat";
 
@@ -26,52 +27,52 @@ public class TerrainDataManager
     private Material _TerrainMat;
     private Material _MT_CopyDepthTexture;
 
-    /// <summary>
-    /// 地图尺寸
-    /// </summary>
-    public static float TERRAIN_SIZE = 10240;
+    public Mesh CubeMesh;
+
+
+    public static Vector2Int ChunkNumInLOD0 = new Vector2Int(2048, 2048);
+
+    public static Vector2 LeftBottomHexPtPos = new Vector2(-2047, -1771.89f);
+
+    public static float HexRadius = 1.1547f;
 
     /// <summary>
     /// 为了适配node的尺寸，让node的数量是整数，需要调整terrain的尺寸。
     /// </summary>
-    public static float REAL_TERRAIN_SIZE
+    public static Vector2 CHUNK_ROOT_POS
     {
         get
         {
-            float nodesize = MAX_LOD_PATCH_SIZE * PATCH_NUM_IN_NODE * (1 << MIN_LOD);
-            return Mathf.Ceil(TERRAIN_SIZE / nodesize - 0.1f) * nodesize;
+            return LeftBottomHexPtPos + new Vector2( -1 * HexRadius * math.sqrt(3) * 0.5f, 0);
         }
     }
 
     /// <summary>
     /// LOD级别包含 0,1,2,3,4,5
     /// </summary>
-    public static int MIN_LOD = 5;
+    public static int MIN_LOD = 9;
+
+    public static int LODRange = 4;
 
     // <summary>
     /// LOD0 时 一个patch的尺寸是8m x 8m
     /// </summary>
-    public static float MAX_LOD_PATCH_SIZE = 8f;
+    public static Vector2 LOD0_CHUNK_SIZE = new Vector2(2, 1.5f * 2 / math.sqrt(3));
 
     /// <summary>
     /// 一个patch的一条边有多少个顶点
     /// </summary>
-    public static int PATCH_GRID_NUM = 17;
+    public static int PATCH_GRID_NUM = 5;
 
-    /// <summary>
-    ///一个node的中包含的path数量是8 X 8个
-    /// </summary>
-    public static int PATCH_NUM_IN_NODE = 8;
+    public static float STAGE_HEIGHT = 0.5f;
 
     /// <summary>
     /// 用于调整四叉树的因子
     /// </summary>
     public static float LodJudgeFector = 1f;
 
-    /// <summary>
-    /// 高度图  [-WorldHeightScale，WorldHeightScale] 转换为高度图中的[0,1]
-    /// </summary>
-    public static float WorldHeightScale = 100f;
+    public static float LodDivideLength = 8f;
+
 
     public static Vector2Int HIZMapSize = new Vector2Int(2048, 1024);
 
@@ -178,24 +179,11 @@ public class TerrainDataManager
         return null;
     }
 
-    /// <summary>
-    /// 获取某个LOD级别，Node的尺寸（1个维度）
-    /// </summary>
-    /// <param name="LOD"></param>
-    /// <returns></returns>
-    public float GetNodeSizeInLod(int LOD)
-    {
-        return MAX_LOD_PATCH_SIZE * PATCH_NUM_IN_NODE * (1 << LOD);
-    }
 
-    /// <summary>
-    /// 获取某个LOD级别，Terrain在一个维度上NODE的数量。该LOD级别，包含的总共的数量是 result * result
-    /// </summary>
-    /// <param name="LOD"></param>
-    /// <returns></returns>
-    public int GetNodeNumInLod(int LOD)
+
+    public Vector2Int GetChunkNumInLod(int LOD)
     {
-        return Mathf.FloorToInt(REAL_TERRAIN_SIZE / GetNodeSizeInLod(LOD) + 0.1f);
+        return new Vector2Int(ChunkNumInLOD0.x >> LOD, ChunkNumInLOD0.y >> LOD);
     }
 
     /// <summary>
@@ -203,9 +191,9 @@ public class TerrainDataManager
     /// </summary>
     /// <param name="LOD"></param>
     /// <returns></returns>
-    public float GetPatchSizeInLod(int LOD)
+    public Vector2 GetPatchSizeInLod(int LOD)
     {
-        return MAX_LOD_PATCH_SIZE * (1 << LOD);
+        return LOD0_CHUNK_SIZE * (1 << LOD);
     }
 
     /// <summary>
@@ -213,13 +201,13 @@ public class TerrainDataManager
     /// </summary>
     /// <param name="LOD"></param>
     /// <returns></returns>
-    public int GetNodeIndexOffset(int LOD)
+    public int GetPatchIndexOffset(int LOD)
     {
         int result = 0;
         for(int i= 0; i< LOD; i++)
         {
-            int nodenum = GetNodeNumInLod(i);
-            result += nodenum * nodenum;
+            Vector2Int nodenum = GetChunkNumInLod(i);
+            result += (nodenum.x * nodenum.y);
         }
         return result; 
     }
@@ -235,7 +223,7 @@ public class TerrainDataManager
             {
                 for (int i=0;i<=MIN_LOD;i++)
                 {
-                    _NodeIndexOffsetList.Add(GetNodeIndexOffset(i));
+                    _NodeIndexOffsetList.Add(GetPatchIndexOffset(i));
                 }
             }
             return _NodeIndexOffsetList;
@@ -287,6 +275,9 @@ public class TerrainDataManager
             return _MT_CopyDepthTexture;
         }
     }
+
+    public CommandBuffer GPUCullCMDBuffer;
+
 
     public void ReleaseResource()
     {

@@ -1,24 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Unity.Mathematics;
+using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 
 public class GPUDrivenTerrainImpl
 {
-    public bool DEBUG = false;
+    public bool DEBUG = true;
     public ComputeShader CS_GPUDrivenTerrain;
-    CommandBuffer command;
+    CommandBuffer GPUDrivenCullCMDBuffer;
 
     public int KN_CopyInputBuffer;
     public int KN_NodeQuadLod;
     public int KN_CreateSectorLodMap;
     public int KN_FrustumCull;
-    public int KN_CreatePatch;
-    public int KN_HizCull;
+
+    ComputeBuffer InputChunkBuffer;
 
     Vector4[] globalValue = new Vector4[10];
     ComputeBuffer NodeIDOffsetOfLOD;
@@ -26,10 +27,10 @@ public class GPUDrivenTerrainImpl
     ComputeBuffer finalList;
     ComputeBuffer NodeBrunchList;
 
+    uint[] NodeBrunchData;
+
     RenderTexture SectorLODMap;
     Texture2D MinMaxHeightMap;
-
-    RenderTexture mRenderPatchMap;
 
     ComputeBuffer mDrawInstanceBuffer;
     ComputeBuffer mDebugInstanceArgsBuffer;
@@ -74,46 +75,36 @@ public class GPUDrivenTerrainImpl
         }
 
 
-        command = new CommandBuffer();
-        command.name = "GPUDriven";
+        GPUDrivenCullCMDBuffer = new CommandBuffer();
+        GPUDrivenCullCMDBuffer.name = "GPUDrivenCull";
 
-        Vector2 patchSizeLodMin = new Vector2(TerrainDataManager.MAX_LOD_PATCH_SIZE, TerrainDataManager.MAX_LOD_PATCH_SIZE);//8m x 8m
+
+        Vector2 patchSizeLod0 = TerrainDataManager.LOD0_CHUNK_SIZE;//8m x 8m
         Vector2Int patchGridNum = new Vector2Int(TerrainDataManager.PATCH_GRID_NUM, TerrainDataManager.PATCH_GRID_NUM);
-        quardMesh = MeshCreator.getInstance().CreateQuardMesh(patchSizeLodMin, patchGridNum);
+        quardMesh = MeshCreator.getInstance().CreateQuardMesh(patchSizeLod0, patchGridNum);
         cubeMesh = MeshCreator.getInstance().CreateCube(1.0f);
 
         KN_CopyInputBuffer = CS_GPUDrivenTerrain.FindKernel(ComputeShaderDefine.KN_CopyInputBuffer);
         KN_NodeQuadLod = CS_GPUDrivenTerrain.FindKernel(ComputeShaderDefine.KN_NodeQuadLod);
         KN_CreateSectorLodMap = CS_GPUDrivenTerrain.FindKernel(ComputeShaderDefine.KN_CreateSectorLodMap);
         KN_FrustumCull = CS_GPUDrivenTerrain.FindKernel(ComputeShaderDefine.KN_FrustumCull);
-        KN_CreatePatch = CS_GPUDrivenTerrain.FindKernel(ComputeShaderDefine.KN_CreatePatch);
-        KN_HizCull = CS_GPUDrivenTerrain.FindKernel(ComputeShaderDefine.KN_HizCull);
 
-        int nodeNumLodMin = TerrainDataManager.GetInstance().GetNodeNumInLod(TerrainDataManager.MIN_LOD);
-        List<Vector2Int> nodeListLOD0List = new List<Vector2Int>();
-        for (int i=0;i< nodeNumLodMin;i++)
-        {
-            for(int j=0;j<nodeNumLodMin;j++)
-            {
-                nodeListLOD0List.Add(new Vector2Int(i,j));
-            }
-        }
+        InputChunkBuffer = new ComputeBuffer(100, 4);
 
-
-        int totalNodeNum = 0;
+        int totalPatchNum = 0;
         for(int i= TerrainDataManager.MIN_LOD; i>=0 ;i--)
         {
-            int nodeNum = TerrainDataManager.GetInstance().GetNodeNumInLod(i);
-            totalNodeNum += (nodeNum * nodeNum);
+            Vector2Int patchNum = TerrainDataManager.GetInstance().GetChunkNumInLod(i);
+            totalPatchNum += patchNum.x * patchNum.y;
         }
 
-        int nodeNumLod0 = TerrainDataManager.GetInstance().GetNodeNumInLod(0);
-        int patchNumInNode = TerrainDataManager.PATCH_NUM_IN_NODE;
 
-        finalList = new ComputeBuffer(nodeNumLod0 * nodeNumLod0 * patchNumInNode * patchNumInNode / 4, 60, ComputeBufferType.Append);
-        nodeBufferPing = new ComputeBuffer(totalNodeNum, 60, ComputeBufferType.Append);
-        nodeBufferPang = new ComputeBuffer(totalNodeNum, 60, ComputeBufferType.Append);
-        NodeBrunchList = new ComputeBuffer(totalNodeNum, 4);
+        finalList = new ComputeBuffer(TerrainDataManager.ChunkNumInLOD0.x * TerrainDataManager.ChunkNumInLOD0.y, 60, ComputeBufferType.Append);
+        nodeBufferPing = new ComputeBuffer(totalPatchNum, 60, ComputeBufferType.Append);
+        nodeBufferPang = new ComputeBuffer(totalPatchNum, 60, ComputeBufferType.Append);
+        NodeBrunchList = new ComputeBuffer(totalPatchNum, 4);
+        NodeBrunchData = new uint[totalPatchNum];
+        NodeBrunchList.SetData(NodeBrunchData);
 
         mDispatchArgsBuffer = new ComputeBuffer(3,4,ComputeBufferType.IndirectArguments);
 
@@ -131,43 +122,43 @@ public class GPUDrivenTerrainImpl
             mDebugInstanceArgsBuffer.SetData(debugInstanceArgsData);
         }
 
-        RenderTextureDescriptor sectorLODMapDes = new RenderTextureDescriptor(nodeNumLod0, nodeNumLod0, RenderTextureFormat.RFloat, 0, 1);
-        sectorLODMapDes.enableRandomWrite = true;
+        RenderTextureDescriptor sectorLODMapDes = new RenderTextureDescriptor(TerrainDataManager.ChunkNumInLOD0.x, TerrainDataManager.ChunkNumInLOD0.y, RenderTextureFormat.R8, 0, 1);
+        sectorLODMapDes.enableRandomWrite = true;       
         SectorLODMap = RenderTexture.GetTemporary(sectorLODMapDes);
         SectorLODMap.filterMode = FilterMode.Point;
         SectorLODMap.Create();
 
         MinMaxHeightMap = TerrainDataManager.GetInstance().TerrainMinMaxHeightMap;
-
-        RenderTextureDescriptor renderPatchMapDesc = new RenderTextureDescriptor(512, 512, RenderTextureFormat.ARGBFloat, 0, 1);
-        renderPatchMapDesc.enableRandomWrite = true;
-        mRenderPatchMap = RenderTexture.GetTemporary(renderPatchMapDesc);
-        mRenderPatchMap.filterMode= FilterMode.Point;
-        mRenderPatchMap.Create();
-
-
-        globalValue[1].x = TerrainDataManager.MIN_LOD;
-        globalValue[1].y = TerrainDataManager.REAL_TERRAIN_SIZE;
-        globalValue[1].z = TerrainDataManager.MAX_LOD_PATCH_SIZE;
-        globalValue[1].w = TerrainDataManager.PATCH_GRID_NUM;
-        globalValue[2].x = TerrainDataManager.PATCH_NUM_IN_NODE;
-        globalValue[2].z = TerrainDataManager.WorldHeightScale;
-        globalValue[2].w = TerrainDataManager.HIZMapSize.x;
-        globalValue[3].x = TerrainDataManager.HIZMapSize.y;
     }
 
     public void ClearCommandBuffer()
     {
-        command.Clear();
+        GPUDrivenCullCMDBuffer.Clear();
     }
 
     public void SetGlobaleValue()
     {
-        globalValue[0].x = Camera.main.transform.position.x;
-        globalValue[0].y = Camera.main.transform.position.y;
-        globalValue[0].z = Camera.main.transform.position.z;
-        globalValue[0].w = Camera.main.fieldOfView;
-        globalValue[2].y = TerrainDataManager.LodJudgeFector;
+        if(mCamera != null)
+        {
+            globalValue[0].x = mCamera.transform.position.x;
+            globalValue[0].y = mCamera.transform.position.y;
+            globalValue[0].z = mCamera.transform.position.z;
+        }
+
+        globalValue[1].x = TerrainDataManager.MIN_LOD;
+        globalValue[1].y = TerrainDataManager.LODRange;
+        globalValue[1].z = TerrainDataManager.LOD0_CHUNK_SIZE.x;
+        globalValue[1].w = TerrainDataManager.LOD0_CHUNK_SIZE.y;
+
+        globalValue[2].x = TerrainDataManager.CHUNK_ROOT_POS.x;
+        globalValue[2].y = TerrainDataManager.CHUNK_ROOT_POS.y;
+        globalValue[2].z = TerrainDataManager.PATCH_GRID_NUM;
+        globalValue[2].w = TerrainDataManager.STAGE_HEIGHT;
+
+        globalValue[3].x = TerrainDataManager.ChunkNumInLOD0.x;
+        globalValue[3].y = TerrainDataManager.ChunkNumInLOD0.y;
+        globalValue[3].z = TerrainDataManager.LodDivideLength;
+
 
         GeometryUtility.CalculateFrustumPlanes(Camera.main, _cameraFrustumPlanes);
 
@@ -180,24 +171,135 @@ public class GPUDrivenTerrainImpl
             }
         }
 
-        command.SetComputeVectorArrayParam(CS_GPUDrivenTerrain, ComputeShaderDefine.globalValueList_P, globalValue);
+        GPUDrivenCullCMDBuffer.SetComputeVectorArrayParam(CS_GPUDrivenTerrain, ComputeShaderDefine.globalValueList_P, globalValue);        
     }
+
+
+    private Camera mCamera;
+
+    private Vector4[] CalCameraFrustum(Camera camera)
+    {
+        mCamera = camera;
+
+        Vector3[] frustumCorners = new Vector3[4];
+        camera.CalculateFrustumCorners(new Rect(0, 0, 1, 1), camera.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
+
+        //视锥体与地面相交的梯形的4个顶点坐标
+        Vector4[] intersectons = new Vector4[4];//顺序：左下、左上、右上、右下
+        for (int i = 0; i < 4; i++)
+        {
+            var worldSpaceCorner = camera.transform.TransformVector(frustumCorners[i]);
+            var rayDir = worldSpaceCorner.normalized;
+            Vector3 intersection = FMath.GetIntersectionOfRayAndPlane(camera.transform.position, rayDir, Vector3.up, Vector3.zero);
+            intersectons[i] = intersection;
+        }
+
+        if (DEBUG)
+        {
+            Vector3 cameraDir = camera.transform.forward.normalized;
+            Vector3 CenterIntersection = FMath.GetIntersectionOfRayAndPlane(camera.transform.position, cameraDir, Vector3.up, Vector3.zero);
+
+            for (int i = 0; i < 4; i++)
+            {
+                UnityEngine.Debug.DrawLine(intersectons[i % 4], intersectons[(i + 1) % 4], Color.red);
+                UnityEngine.Debug.DrawLine(intersectons[i], CenterIntersection, Color.yellow);
+            }
+        }
+
+        return intersectons;
+    }
+
+    Vector4[] mIntersections;
+
+    public int GetBaseLOD(Camera camera)
+    {
+        return (int)math.floor(math.log2(camera.transform.position.y / TerrainDataManager.LodDivideLength)) - 1;
+    }
+
+    BoundsInt mViewChunks = new BoundsInt();
+
+    public bool mViewChunkIsDirty = false;
+
+    public int BaseLOD;
+
+    public uint[] mInputPatchList;
+
+    public void UpdateViewChunk(Camera camera)
+    {
+        mIntersections = CalCameraFrustum(camera);
+
+        int baseLOD = GetBaseLOD(camera);
+
+        InputMinLOD = math.clamp(baseLOD + TerrainDataManager.LODRange, 0, TerrainDataManager.MIN_LOD);
+
+
+        Vector2 BasePathSize = TerrainDataManager.GetInstance().GetPatchSizeInLod(InputMinLOD);
+
+        Vector2 chunkRootPos = TerrainDataManager.CHUNK_ROOT_POS;
+
+        Vector2Int maxChunkNum = TerrainDataManager.GetInstance().GetChunkNumInLod(InputMinLOD);
+
+        //视锥体与地面相交的梯形的4个顶点的BaseMip级别下的Tile坐标
+        Vector2Int BottomLeftTile = new Vector2Int((int)((mIntersections[0].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[0].z - chunkRootPos.y) / BasePathSize.y));
+        Vector2Int TopLeftTile = new Vector2Int((int)((mIntersections[1].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[1].z - chunkRootPos.y) / BasePathSize.y));
+        Vector2Int TopRightTile = new Vector2Int((int)((mIntersections[2].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[2].z - chunkRootPos.y) / BasePathSize.y));
+        Vector2Int BottomRightTile = new Vector2Int((int)((mIntersections[3].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[3].z - chunkRootPos.y) / BasePathSize.y));
+
+        Vector3 CenterIntersection = FMath.GetIntersectionOfRayAndPlane(mCamera.transform.position, mCamera.transform.forward.normalized, Vector3.up, Vector3.zero);
+        //人眼看屏幕时，总盯着真正的屏幕中心偏上一些的地方看
+        Vector3 LODCenter = CenterIntersection + 0.25f * BasePathSize.y * Vector3.forward;
+        GPUDrivenCullCMDBuffer.SetComputeVectorParam(CS_GPUDrivenTerrain, "_LODCenter", LODCenter);
+
+        BoundsInt curBound = new BoundsInt();
+
+        curBound.xMin = math.max(TopLeftTile.x, 0);
+        curBound.xMax = math.min(TopRightTile.x, maxChunkNum.x);
+        curBound.zMin = math.max(BottomRightTile.y, 0);
+        curBound.zMax = math.min(TopRightTile.y, maxChunkNum.y);
+
+        mInputPatchList = new uint[(curBound.xMax - curBound.xMin + 1) *(curBound.zMax - curBound.zMin + 1)];
+
+        int index = 0;
+        for(uint i= (uint)curBound.xMin; i<= curBound.xMax; i++)
+        {
+            for (uint j = (uint)curBound.zMin; j <= curBound.zMax; j++)
+            {
+                uint vAdress = FMath.MortonCode2(i) | (FMath.MortonCode2(j) << 1);
+                mInputPatchList[index] = vAdress;
+                index++;
+            }
+        }
+        TerrainDataManager.GetInstance().GPUCullCMDBuffer = null;
+        //if (baseLOD != BaseLOD || curBound != mViewChunks)
+        {
+            BaseLOD = baseLOD;
+            mViewChunks = curBound;
+            TerrainDataManager.GetInstance().GPUCullCMDBuffer = GPUDrivenCullCMDBuffer;
+            CopyInputBuffer();
+            CreateLODChunkList();
+            //CreateSectorLodMap();
+        }
+        CalFrustumCulledPatchList();
+    }
+
+
+    public int InputMinLOD;
 
     /// <summary>
     /// 初始化最开始LODMin时的5x5个node
     /// </summary>
-    public void CopyInputBuffer()
+    private void CopyInputBuffer()
     {
-        command.SetBufferCounterValue(nodeBufferPing, 0);
-        //创建起始LOD_MIN时，5x5的nodelist，存入appendList里面
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_CopyInputBuffer, ComputeShaderDefine.appendList_P, nodeBufferPing);
-        int nodeNumLodMin = TerrainDataManager.GetInstance().GetNodeNumInLod(TerrainDataManager.MIN_LOD);
-        CopyInputDispatchArgsData[0] = (uint)nodeNumLodMin;
-        CopyInputDispatchArgsData[1] = (uint)nodeNumLodMin;
-        CopyInputDispatchArgsData[2] = 1;
-        command.SetBufferData(mDispatchArgsBuffer, CopyInputDispatchArgsData);
-        command.DispatchCompute(CS_GPUDrivenTerrain, KN_CopyInputBuffer, mDispatchArgsBuffer, 0);
-        //此时，nodeBufferPing有了5x5的LOD_MIN时的待处理的Node，nodeBufferPing需要作为consumeList_P传给KN_NodeQuadLod。
+        GPUDrivenCullCMDBuffer.SetBufferCounterValue(nodeBufferPing, 0);
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_CopyInputBuffer, ComputeShaderDefine.appendList_P, nodeBufferPing);//结果存储到nodeBufferPing中
+        GPUDrivenCullCMDBuffer.SetComputeIntParam(CS_GPUDrivenTerrain, "InputLOD", InputMinLOD);
+        GPUDrivenCullCMDBuffer.SetBufferData(InputChunkBuffer, mInputPatchList);
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_CopyInputBuffer, "InputChunkList", InputChunkBuffer);
+        GPUDrivenCullCMDBuffer.DispatchCompute(CS_GPUDrivenTerrain, KN_CopyInputBuffer, mInputPatchList.Length, 1,1);
+        if(DEBUG)
+        {
+            //GPUDrivenCullCMDBuffer.CopyCounterValue(nodeBufferPing, mDebugInstanceArgsBuffer, 4);
+        }
     }
 
     /// <summary>
@@ -206,33 +308,34 @@ public class GPUDrivenTerrainImpl
     /// 用CommandBuffer统一处理多个dispatch，会比单独调用dispatch快一点。
     /// computeshader.GetData，从GPU拿数据到CPU，在手机上非常耗时。取5个int，就要耗时25ms
     /// </summary>
-    public void CreateLODNodeList()
+    public void CreateLODChunkList()
     {
-        int nodeNumLodMin = TerrainDataManager.GetInstance().GetNodeNumInLod(TerrainDataManager.MIN_LOD);
-        command.SetBufferCounterValue(nodeBufferPang, 0);
-        command.SetBufferCounterValue(finalList, 0);
-        command.SetBufferCounterValue(NodeBrunchList, 0);
+        GPUDrivenCullCMDBuffer.SetBufferCounterValue(nodeBufferPang, 0);
+        GPUDrivenCullCMDBuffer.SetBufferCounterValue(finalList, 0);
+        GPUDrivenCullCMDBuffer.SetBufferData(NodeBrunchList, NodeBrunchData);//clear
+        
+        //GPUDrivenCullCMDBuffer.SetBufferCounterValue(NodeBrunchList, 0);
 
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.finalList_P, finalList);
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.NodeBrunchList_P, NodeBrunchList);
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.NodeIDOffsetOfLOD_P, NodeIDOffsetOfLOD);
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.finalList_P, finalList);
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.NodeBrunchList_P, NodeBrunchList);
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.NodeIDOffsetOfLOD_P, NodeIDOffsetOfLOD);
 
-        command.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.MinMaxHeightMap_P, MinMaxHeightMap);
+        GPUDrivenCullCMDBuffer.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.MinMaxHeightMap_P, MinMaxHeightMap);
 
-        NodeQuadLodDispatchArgsData[0] = (uint)(nodeNumLodMin * nodeNumLodMin);
+        NodeQuadLodDispatchArgsData[0] = (uint)mInputPatchList.Length;
         NodeQuadLodDispatchArgsData[1] = 1;
         NodeQuadLodDispatchArgsData[2] = 1;
-        command.SetBufferData(mDispatchArgsBuffer, NodeQuadLodDispatchArgsData);
+        GPUDrivenCullCMDBuffer.SetBufferData(mDispatchArgsBuffer, NodeQuadLodDispatchArgsData);
 
-        for (int i = TerrainDataManager.MIN_LOD; i >= 0; i--)
+        for (int i = InputMinLOD; i >= 0; i--)
         {
-            command.SetComputeIntParam(CS_GPUDrivenTerrain, ComputeShaderDefine.CURRENT_LOD_P, i);
+            GPUDrivenCullCMDBuffer.SetComputeIntParam(CS_GPUDrivenTerrain, ComputeShaderDefine.CURRENT_LOD_P, i);
 
-            command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.consumeList_P, nodeBufferPing);
-            command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.appendList_P, nodeBufferPang);
-            command.DispatchCompute(CS_GPUDrivenTerrain, KN_NodeQuadLod, mDispatchArgsBuffer, 0);
+            GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.consumeList_P, nodeBufferPing);
+            GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_NodeQuadLod, ComputeShaderDefine.appendList_P, nodeBufferPang);
+            GPUDrivenCullCMDBuffer.DispatchCompute(CS_GPUDrivenTerrain, KN_NodeQuadLod, mDispatchArgsBuffer, 0);
 
-            command.CopyCounterValue(nodeBufferPang, mDispatchArgsBuffer, 0);
+            GPUDrivenCullCMDBuffer.CopyCounterValue(nodeBufferPang, mDispatchArgsBuffer, 0);
 
             ComputeBuffer temp = nodeBufferPing;
             nodeBufferPing = nodeBufferPang;
@@ -240,7 +343,7 @@ public class GPUDrivenTerrainImpl
         }
         if (DEBUG)
         {
-            //command.CopyCounterValue(finalList, mDebugInstanceArgsBuffer, 4);
+            //GPUDrivenCullCMDBuffer.CopyCounterValue(finalList, mDebugInstanceArgsBuffer, 4);
         }
 
     }
@@ -252,10 +355,10 @@ public class GPUDrivenTerrainImpl
     /// </summary>
     public void CreateSectorLodMap()
     {
-        int nodeNumLod0 = TerrainDataManager.GetInstance().GetNodeNumInLod(0);
-        command.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_CreateSectorLodMap, ComputeShaderDefine.SectorLODMap_P, SectorLODMap); ;
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_CreateSectorLodMap, ComputeShaderDefine.NodeBrunchList_P, NodeBrunchList);
-        command.DispatchCompute(CS_GPUDrivenTerrain, KN_CreateSectorLodMap, nodeNumLod0/8, nodeNumLod0/8, 1);
+        Vector2Int nodeNumLod0 = TerrainDataManager.GetInstance().GetChunkNumInLod(0);
+        GPUDrivenCullCMDBuffer.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_CreateSectorLodMap, ComputeShaderDefine.SectorLODMap_P, SectorLODMap); ;
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_CreateSectorLodMap, ComputeShaderDefine.NodeBrunchList_P, NodeBrunchList);
+        GPUDrivenCullCMDBuffer.DispatchCompute(CS_GPUDrivenTerrain, KN_CreateSectorLodMap, nodeNumLod0.x/32, nodeNumLod0.y/32, 1);
     }
 
     /// <summary>
@@ -263,64 +366,18 @@ public class GPUDrivenTerrainImpl
     /// </summary>
     public void CalFrustumCulledPatchList()
     {
-        command.CopyCounterValue(finalList, mDispatchArgsBuffer, 0);
-        command.SetBufferCounterValue(nodeBufferPang, 0);
+        GPUDrivenCullCMDBuffer.CopyCounterValue(finalList, mDispatchArgsBuffer, 0);
+        GPUDrivenCullCMDBuffer.SetBufferCounterValue(nodeBufferPang, 0);
         //此时LOD后的node全部存在 finalList中，作为 KN_FrustumCull 的 consumeList_P传入
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_FrustumCull, ComputeShaderDefine.consumeList_P, finalList);
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_FrustumCull, ComputeShaderDefine.appendList_P, nodeBufferPang);
-        command.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_FrustumCull, ComputeShaderDefine.MinMaxHeightMap_P, MinMaxHeightMap);
-        command.DispatchCompute(CS_GPUDrivenTerrain, KN_FrustumCull, mDispatchArgsBuffer,0);
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_FrustumCull, ComputeShaderDefine.consumeList_P, finalList);
+        GPUDrivenCullCMDBuffer.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_FrustumCull, ComputeShaderDefine.appendList_P, nodeBufferPang);
+        GPUDrivenCullCMDBuffer.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_FrustumCull, ComputeShaderDefine.MinMaxHeightMap_P, MinMaxHeightMap);
+        GPUDrivenCullCMDBuffer.DispatchCompute(CS_GPUDrivenTerrain, KN_FrustumCull, mDispatchArgsBuffer,0);
         if (DEBUG)
         {
-            //command.CopyCounterValue(nodeBufferPang, mDebugInstanceArgsBuffer, 4);
+            GPUDrivenCullCMDBuffer.CopyCounterValue(nodeBufferPang, mDebugInstanceArgsBuffer, 4);
         }
     }
-
-    /// <summary>
-    /// 将NodeList扩展成PatchList
-    /// </summary>
-    public void CreatePatch()
-    {
-        command.CopyCounterValue(nodeBufferPang, mDispatchArgsBuffer, 0);
-        command.SetBufferCounterValue(finalList, 0);
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_CreatePatch, ComputeShaderDefine.consumeList_P, nodeBufferPang);
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_CreatePatch, ComputeShaderDefine.appendList_P, finalList);
-        command.DispatchCompute(CS_GPUDrivenTerrain, KN_CreatePatch, mDispatchArgsBuffer, 0);
-        if (DEBUG)
-        {
-            command.CopyCounterValue(finalList, mDebugInstanceArgsBuffer, 4);
-        }
-    }
-
-    /// <summary>
-    /// Hiz遮挡剔除
-    /// </summary>
-    public void CalHizCulledPatchList()
-    { 
-        Matrix4x4 openGlProjectionMatrix =  Camera.main.projectionMatrix;
-        Matrix4x4 platFormProjectionMatrix = GL.GetGPUProjectionMatrix(openGlProjectionMatrix, false);
-        Matrix4x4 worldToCameraMatrix = Camera.main.worldToCameraMatrix;
-        Matrix4x4 VPMatrix = platFormProjectionMatrix* worldToCameraMatrix;
-
-        command.SetComputeMatrixParam(CS_GPUDrivenTerrain, ComputeShaderDefine.VPMatrix_P, VPMatrix);
-        command.CopyCounterValue(finalList ,mDispatchArgsBuffer,0);
-        drawInstanceData[1] = 0;
-        command.SetBufferData(mDrawInstanceBuffer, drawInstanceData);
-
-
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_HizCull, ComputeShaderDefine.InstanceArgs_P, mDrawInstanceBuffer);
-        command.SetComputeBufferParam(CS_GPUDrivenTerrain, KN_HizCull, ComputeShaderDefine.consumeList_P, finalList);
-        command.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_HizCull, ComputeShaderDefine.HIZ_MAP_P, TerrainDataManager.GetInstance().HIZ_MAP);
-        command.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_HizCull, ComputeShaderDefine.MinMaxHeightMap_P, MinMaxHeightMap);
-        command.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_HizCull, ComputeShaderDefine.RenderPatchMap_P, mRenderPatchMap);
-        command.SetComputeTextureParam(CS_GPUDrivenTerrain, KN_HizCull, ComputeShaderDefine.SectorLODMap_P, SectorLODMap);
-        command.DispatchCompute(CS_GPUDrivenTerrain, KN_HizCull, mDispatchArgsBuffer, 0);
-
-        //此时mRenderPatchMap 写入了经过裁剪后，剩余的patch的列表
-        //mDrawInstanceBuffer 中写入了patch的列表的数量
-    }
-
-    float[] debuglist = new float[34125];
 
     public bool CheckRender()
     {
@@ -328,28 +385,12 @@ public class GPUDrivenTerrainImpl
         {
             return true;
         }
-        if(TerrainDataManager.GetInstance().HIZ_MAP != null
-            && TerrainDataManager.GetInstance().TerrainMaterial != null
+        if(TerrainDataManager.GetInstance().TerrainMaterial != null
             && MinMaxHeightMap != null)
         {
             return true;
         }
         return false;
-    }
-
-    public void UpdateTerrainMaterialParams()
-    {
-        TerrainDataManager.GetInstance().TerrainMaterial.SetTexture(ComputeShaderDefine._RenderPatchMap_P, mRenderPatchMap);
-        TerrainDataManager.GetInstance().TerrainMaterial.SetVectorArray(ComputeShaderDefine.globalValueList_P, globalValue);
-    }
-
-    public void UpdateDebugMaterialParams()
-    {
-        if(DEBUG)
-        {
-            TerrainDataManager.GetInstance().TerrainDebugMaterial.SetBuffer(ComputeShaderDefine.DebugCubeList, nodeBufferPang);
-            TerrainDataManager.GetInstance().TerrainDebugMaterial.SetVectorArray(ComputeShaderDefine.globalValueList_P, globalValue);
-        }
     }
 
     public ComputeBuffer GetDrawInstanceArgsBuffer()
@@ -369,29 +410,26 @@ public class GPUDrivenTerrainImpl
         return mDebugInstanceArgsBuffer;
     }
 
-    public void ExecuteCommand()
-    {
-        Graphics.ExecuteCommandBuffer(command);
-    }
     /// <summary>
     /// 绘制PatchInstance 组成的 Terrain
     /// </summary>
     public void DrawTerrainInstance()
     {
-        Graphics.DrawMeshInstancedIndirect(quardMesh, 0
-            , TerrainDataManager.GetInstance().TerrainMaterial,
-            new Bounds(Vector3.zero, new Vector3(TerrainDataManager.REAL_TERRAIN_SIZE, TerrainDataManager.WorldHeightScale, TerrainDataManager.REAL_TERRAIN_SIZE))
-            , GetDrawInstanceArgsBuffer());
+        GPUDrivenCullCMDBuffer.SetGlobalBuffer("ChunkList", nodeBufferPang);
+        GPUDrivenCullCMDBuffer.CopyCounterValue(nodeBufferPang, mDrawInstanceBuffer, 4);
+        GPUDrivenCullCMDBuffer.SetGlobalVectorArray("globalValueList2", globalValue);
+        GPUDrivenCullCMDBuffer.DrawMeshInstancedIndirect(quardMesh, 0, TerrainDataManager.GetInstance().TerrainMaterial
+            , 0, GetDrawInstanceArgsBuffer());
     }
 
     public void DrawDebugCubeInstance()
     {
         if (DEBUG)
         {
-            Graphics.DrawMeshInstancedIndirect(cubeMesh, 0
-            , TerrainDataManager.GetInstance().TerrainDebugMaterial,
-            new Bounds(Vector3.zero, new Vector3(TerrainDataManager.REAL_TERRAIN_SIZE, TerrainDataManager.WorldHeightScale, TerrainDataManager.REAL_TERRAIN_SIZE))
-            , GetDebugDrawInstanceArgsBuffer());
+            GPUDrivenCullCMDBuffer.SetGlobalBuffer(ComputeShaderDefine.DebugCubeList, nodeBufferPang);
+            GPUDrivenCullCMDBuffer.SetGlobalVectorArray(ComputeShaderDefine.globalValueList_P, globalValue);
+            GPUDrivenCullCMDBuffer.DrawMeshInstancedIndirect(TerrainDataManager.GetInstance().CubeMesh, 
+                0, TerrainDataManager.GetInstance().TerrainDebugMaterial, -1,GetDebugDrawInstanceArgsBuffer(), 0);
         }
     }
 
@@ -405,11 +443,11 @@ public class GPUDrivenTerrainImpl
         if (mDrawInstanceBuffer != null) mDrawInstanceBuffer.Dispose();
         if (mDispatchArgsBuffer != null) mDispatchArgsBuffer.Dispose();
         if(DEBUG && mDebugInstanceArgsBuffer != null) mDebugInstanceArgsBuffer.Dispose();
-        if (command != null) command.Dispose();
+        if (GPUDrivenCullCMDBuffer != null) GPUDrivenCullCMDBuffer.Dispose();
 
         RenderTexture.ReleaseTemporary(SectorLODMap);
-        RenderTexture.ReleaseTemporary(TerrainDataManager.GetInstance().HIZ_MAP); 
-        RenderTexture.ReleaseTemporary(mRenderPatchMap);
+
+        TerrainDataManager.GetInstance().GPUCullCMDBuffer = null;
     }
    
 }
