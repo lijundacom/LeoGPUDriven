@@ -9,3 +9,9 @@ Temp
 Packages/packages-lock.json
 *.sln
 /*.apk
+Assets/AddressableAssetsData/Android/addressables_content_state.bin
+Assets/AddressableAssetsData/AssetGroups/Default Local Group.asset
+Assets/AddressableAssetsData/AssetGroups/Material.asset
+Assets/AddressableAssetsData/AssetGroups/Shader.asset
+UserSettings/Layouts/CurrentMaximizeLayout.dwlt
+haha_BurstDebugInformation_DoNotShip/tempburstlibs/arm64-v8a/lib_burst_generated.txt
