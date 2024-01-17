@@ -233,11 +233,8 @@ public class GPUDrivenTerrainImpl
 
         Vector2Int maxChunkNum = TerrainDataManager.GetInstance().GetChunkNumInLod(InputMinLOD);
 
-        //视锥体与地面相交的梯形的4个顶点的BaseMip级别下的Tile坐标
-        Vector2Int BottomLeftTile = new Vector2Int((int)((mIntersections[0].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[0].z - chunkRootPos.y) / BasePathSize.y));
-        Vector2Int TopLeftTile = new Vector2Int((int)((mIntersections[1].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[1].z - chunkRootPos.y) / BasePathSize.y));
-        Vector2Int TopRightTile = new Vector2Int((int)((mIntersections[2].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[2].z - chunkRootPos.y) / BasePathSize.y));
-        Vector2Int BottomRightTile = new Vector2Int((int)((mIntersections[3].x - chunkRootPos.x) / BasePathSize.x), (int)((mIntersections[3].z - chunkRootPos.y) / BasePathSize.y));
+        Vector4 mIntersectionMin = math.min(math.min(mIntersections[0], mIntersections[1]), math.min(mIntersections[2], mIntersections[3]));
+        Vector4 mIntersectionMax = math.max(math.max(mIntersections[0], mIntersections[1]), math.max(mIntersections[2], mIntersections[3]));
 
         Vector3 CenterIntersection = FMath.GetIntersectionOfRayAndPlane(mCamera.transform.position, mCamera.transform.forward.normalized, Vector3.up, Vector3.zero);
         //人眼看屏幕时，总盯着真正的屏幕中心偏上一些的地方看
@@ -246,10 +243,10 @@ public class GPUDrivenTerrainImpl
 
         BoundsInt curBound = new BoundsInt();
 
-        curBound.xMin = math.max(TopLeftTile.x, 0);
-        curBound.xMax = math.min(TopRightTile.x, maxChunkNum.x);
-        curBound.zMin = math.max(BottomRightTile.y, 0);
-        curBound.zMax = math.min(TopRightTile.y, maxChunkNum.y);
+        curBound.xMin = math.max((int)((mIntersectionMin.x - chunkRootPos.x) / BasePathSize.x), 0);
+        curBound.xMax = math.min((int)((mIntersectionMax.x - chunkRootPos.x) / BasePathSize.x), maxChunkNum.x);
+        curBound.zMin = math.max((int)((mIntersectionMin.z - chunkRootPos.y) / BasePathSize.y), 0);
+        curBound.zMax = math.min((int)((mIntersectionMax.z - chunkRootPos.y) / BasePathSize.y), maxChunkNum.y);
 
         mInputPatchList = new uint[(curBound.xMax - curBound.xMin + 1) *(curBound.zMax - curBound.zMin + 1)];
 

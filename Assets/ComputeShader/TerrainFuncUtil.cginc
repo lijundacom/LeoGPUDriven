@@ -28,7 +28,7 @@
 //获取某个LOD级别，Node的尺寸（1个维度）
 inline float2 GetNodeSizeInLod(GlobalValue gvalue, int LOD)
 {
-    return gvalue.LOD0ChunkSize.xy * (1 << LOD);
+    return float2(gvalue.LOD0ChunkSize.x * (1 << LOD), gvalue.LOD0ChunkSize.y * (1 << LOD));
 }
 
 //获取某个LOD级别，Terrain在一个维度上NODE的数量。该LOD级别，包含的总共的数量是 result * result
@@ -67,7 +67,7 @@ inline void GetFrustumPlane(float4 valueList[10], inout float4 frustumPlane[6])
 float2 GetNodeCenerPos(GlobalValue gvalue, uint2 nodeXY, uint LOD)
 {
     float2 nodeSize = GetNodeSizeInLod(gvalue, LOD);
-    float2 nodePos = float2(nodeSize.x * (nodeXY.x + 0.5), nodeSize.y * (nodeXY.y + 0.5)) + gvalue.ChunkRootPos.xy;
+    float2 nodePos = float2(nodeSize.x * (float(nodeXY.x) + 0.5), nodeSize.y * (float(nodeXY.y) + 0.5)) + gvalue.ChunkRootPos.xy;
     return nodePos;
 }
 

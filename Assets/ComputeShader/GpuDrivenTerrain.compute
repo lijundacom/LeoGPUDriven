@@ -75,7 +75,9 @@ uint IsNeedQuad(GlobalValue gvalue, NodePatchStruct nodeStruct)
         return 0;
     }
     
-    if (int(nodeStruct.LOD) > (int(nodeStruct.LimitLOD) - 1))
+    int LimitLOD = int(nodeStruct.LimitLOD) - 1;
+    int CurLOD = int(nodeStruct.LOD);
+    if (CurLOD > LimitLOD && CurLOD <= (LimitLOD + int(gvalue.LOD_RANGE)))
     {
         return 1;
     }
@@ -103,8 +105,8 @@ void CalNodeBoundAndLimitLOD(GlobalValue gvalue, inout NodePatchStruct nodeStruc
     
     float2 minMaxHeight = float2(minStage * gvalue.StageHeight, maxStage * gvalue.StageHeight);
     float2 nodeSize = GetNodeSizeInLod(gvalue, nodeStruct.LOD);
-    nodeStruct.boundMax = float3(nodeSize.x *  0.5, minMaxHeight.y, nodeSize.y *  0.5);
     nodeStruct.boundMin = float3(nodeSize.x * -0.5, minMaxHeight.x, nodeSize.y * -0.5);
+    nodeStruct.boundMax = float3(nodeSize.x *  0.5, minMaxHeight.y, nodeSize.y *  0.5);
     nodeStruct.LimitLOD = LimitLOD;
 }
 
@@ -193,9 +195,9 @@ void GetLoadTrans(inout NodePatchStruct patch, GlobalValue gvalue)
 }
 
 
-uint IsOutSidePlane(float4 plane, float3 position)
+bool IsOutSidePlane(float4 plane, float3 position)
 {
-    return dot(plane.xyz, position) + plane.w < -10 ? 1 : 0;
+    return dot(plane.xyz, position) + plane.w < 0;
 }
 
 //true: avalible
@@ -232,7 +234,6 @@ void FrustumCull(uint3 groupId : SV_GroupID, uint3 idInGroup : SV_GroupThreadID)
     float4 frustumPlane[6];
     GetFrustumPlane(globalValueList, frustumPlane);
     bool frusAvalible = FrustumCullBound(center3 + nodeStruct.boundMin, center3 + nodeStruct.boundMax, frustumPlane);
-    //bool frusAvalible = FrustumCullBound(center3, center3, frustumPlane);
     if (frusAvalible)
     {
         appendList.Append(nodeStruct);
