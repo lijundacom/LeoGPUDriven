@@ -48,9 +48,9 @@ public class TerrainRenderer : MonoBehaviour
             //初始化LODMIN时5x5的node
             mGPUDrivenTerrainImpl.UpdateViewChunk(mTerrainCamera);
 
-            mGPUDrivenTerrainImpl.DrawTerrainInstance();
+            //mGPUDrivenTerrainImpl.DrawTerrainInstance();
 
-            //mGPUDrivenTerrainImpl.DrawDebugCubeInstance();
+            mGPUDrivenTerrainImpl.DrawDebugCubeInstance();
         }
     }
 
