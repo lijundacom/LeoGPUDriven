@@ -25,7 +25,7 @@ void CalHexPtUV_float(uint2 StageTextureSize, float2 worldPosXZ,float2 HexOrigin
     float2 localPos = worldPosXZ.xy - (HexOriginWorldPos.xy - float2(hex_radius * sqrt(3) * 0.5, 0));
     float2 quadSize = float2(hex_radius * sqrt(3),hex_radius * 3);
     int2 quadXY = int2(localPos.x/quadSize.x, localPos.y /quadSize.y);
-    if(any(quadXY.xy < 0) || any(quadXY.xy >= StageTextureSize.xy))
+    if(any(quadXY.xy < 0) || any(quadXY.xy >= int2(StageTextureSize.xy)))
     {
         UV = float2(0,0);
         return;
@@ -85,7 +85,7 @@ inline void FixLODConnectSeam(inout float4 vertex, uint2 PatchXYInNode, uint Nod
         uint stepIndex = vexIndex.y % step;
         if (stepIndex != 0)
         {
-            vertex.z -= patchGridSize * stepIndex;
+            vertex.z -= patchGridSize.y * stepIndex;
         }
         return;
     }
@@ -96,7 +96,7 @@ inline void FixLODConnectSeam(inout float4 vertex, uint2 PatchXYInNode, uint Nod
         uint stepIndex = vexIndex.x % step;
         if (stepIndex != 0)
         {
-            vertex.x -= patchGridSize * stepIndex;
+            vertex.x -= patchGridSize.x * stepIndex;
         }
         return;
     }
@@ -107,7 +107,7 @@ inline void FixLODConnectSeam(inout float4 vertex, uint2 PatchXYInNode, uint Nod
         uint stepIndex = vexIndex.y % step;
         if (stepIndex != 0)
         {
-            vertex.z -= patchGridSize * stepIndex;
+            vertex.z -= patchGridSize.y * stepIndex;
         }
         return;
     }
@@ -118,7 +118,7 @@ inline void FixLODConnectSeam(inout float4 vertex, uint2 PatchXYInNode, uint Nod
         uint stepIndex = vexIndex.x % step;
         if (stepIndex != 0)
         {
-            vertex.x -= patchGridSize * stepIndex;
+            vertex.x -= patchGridSize.x * stepIndex;
         }
         return;
     }
