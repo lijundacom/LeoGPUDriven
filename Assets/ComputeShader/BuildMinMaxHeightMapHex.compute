@@ -20,11 +20,11 @@ void BuildMinMaxHeightMapByHeightMap(uint3 id : SV_DispatchThreadID)
 
     float data0, data1, data2;  //0~1      -127~ 128
     
-    if (id.y & 0x01 == 0)
+    if ((id.y & 0x01) == 0)
     {
         int2 hexID0 = id.xy;
-        int2 hexID1 = id.xy + int2(-1, 0);
-        int2 hexID2 = id.xy + int2(0, -1);
+        int2 hexID1 = id.xy + int2(0, +1);
+        int2 hexID2 = id.xy + int2(-1, +1);
         
         data0 = heightMap[hexID0];
         if (any(hexID1.xy < 0))
@@ -43,13 +43,13 @@ void BuildMinMaxHeightMapByHeightMap(uint3 id : SV_DispatchThreadID)
         {
             data2 = heightMap[hexID2];
         }
-        
     }
     else
     {
+        
         int2 hexID0 = id.xy;
-        int2 hexID1 = id.xy + int2(-1, -1);
-        int2 hexID2 = id.xy + int2(0, -1);
+        int2 hexID1 = id.xy + int2(-1, 0);
+        int2 hexID2 = id.xy + int2(0, +1);
         
         data0 = heightMap[hexID0];
         if (any(hexID1.xy < 0))
@@ -68,22 +68,25 @@ void BuildMinMaxHeightMapByHeightMap(uint3 id : SV_DispatchThreadID)
         {
             data2 = heightMap[hexID2];
         }
+        
+        
     }
     
     int stage0, stage1, stage2;
     
-    stage0 = data0 * 255 - 127;
-    stage1 = data1 * 255 - 127;
-    stage2 = data2 * 255 - 127;
+    stage0 = round(data0 * 255 - 127);
+    stage1 = round(data1 * 255 - 127);
+    stage2 = round(data2 * 255 - 127);
     
-    int minStage = min(stage0, min(stage0, stage0));
-    int maxStage = max(stage0, max(stage0, stage0));
+    int minStage = min(stage0, min(stage1, stage2));
+    int maxStage = max(stage0, max(stage1, stage2));
     uint LOD = 0;
     if (minStage == maxStage)
     {
         LOD = 1;
     }
-    float result = (uint(minStage + 31) << 10 | uint(maxStage + 31) << 4 | LOD) * (1.0 / (1 << 16 - 1));
+    uint MAXBit = (1 << 16) - 1;
+    float result = ((uint(minStage + 31) << 10) | (uint(maxStage + 31) << 4) | LOD) * (1.0 / MAXBit);
     outputMinMaxHeightMap[id.xy] = result;
 }
 
@@ -97,32 +100,35 @@ void BuildMinMaxHeightMapByMinMaxHeightMap(uint3 id : SV_DispatchThreadID)
     
     uint MAXBit = (1 << 16) - 1;
     
-    uint date00 = uint(inputMinMaxHeightMap[uint2(id.x * 2, id.y * 2)] * MAXBit);
-    uint date01 = uint(inputMinMaxHeightMap[uint2(id.x * 2 + 1, id.y * 2)] * MAXBit);
-    uint date10 = uint(inputMinMaxHeightMap[uint2(id.x * 2, id.y * 2 + 1)] * MAXBit);
-    uint date11 = uint(inputMinMaxHeightMap[uint2(id.x * 2 + 1, id.y * 2 + 1)] * MAXBit);
+    uint date00 = round(inputMinMaxHeightMap[uint2(id.x * 2, id.y * 2)] * MAXBit);
+    uint date01 = round(inputMinMaxHeightMap[uint2(id.x * 2 + 1, id.y * 2)] * MAXBit);
+    uint date10 = round(inputMinMaxHeightMap[uint2(id.x * 2, id.y * 2 + 1)] * MAXBit);
+    uint date11 = round(inputMinMaxHeightMap[uint2(id.x * 2 + 1, id.y * 2 + 1)] * MAXBit);
     
     uint minStage00 = (date00 >> 10) & 0x3f;
     uint maxStage00 = (date00 >> 4) & 0x3f;
-    uint LOD00 = date00  & 0x3f;
+    uint LOD00 = date00  & 0xf;
     
     uint minStage01 = (date01 >> 10) & 0x3f;
     uint maxStage01 = (date01 >> 4) & 0x3f;
-    uint LOD01 = date01 & 0x3f;
+    uint LOD01 = date01 & 0xf;
     
     uint minStage10 = (date10 >> 10) & 0x3f;
     uint maxStage10 = (date10 >> 4) & 0x3f;
-    uint LOD10 = date10 & 0x3f;
+    uint LOD10 = date10 & 0xf;
     
     uint minStage11 = (date11 >> 10) & 0x3f;
     uint maxStage11 = (date11 >> 4) & 0x3f;
-    uint LOD11 = date11 & 0x3f;
+    uint LOD11 = date11 & 0xf;
     
     uint minStage = min(min(minStage00, minStage01), min(minStage10, minStage11));
     uint maxStage = max(max(maxStage00, maxStage01), max(maxStage10, maxStage11));
     
     uint LOD;
-    if (LOD00 == LOD01 == LOD10 == LOD11 == curLOD)
+    if ((int(LOD00) == int(LOD01)) 
+        && (int(LOD10) == int(LOD11))
+        && int(LOD00) == int(curLOD)
+        && int(LOD10) == int(curLOD))
     {
         LOD = curLOD + 1;
     }
@@ -131,7 +137,6 @@ void BuildMinMaxHeightMapByMinMaxHeightMap(uint3 id : SV_DispatchThreadID)
         LOD = min(min(LOD00, LOD01), min(LOD10, LOD11));
     }
     
-    float result = (minStage << 10 | maxStage << 4 | LOD) * 1.0 / MAXBit;
-    
+    float result = ((minStage << 10) | (maxStage << 4) | LOD) * 1.0 / MAXBit;
     outputMinMaxHeightMap[id.xy] = result;
 }

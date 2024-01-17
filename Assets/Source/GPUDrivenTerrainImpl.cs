@@ -162,13 +162,9 @@ public class GPUDrivenTerrainImpl
 
         GeometryUtility.CalculateFrustumPlanes(Camera.main, _cameraFrustumPlanes);
 
-        for (int i = 0; i < 6; i++)
+        for(int i=0;i<6;i++)
         {
             globalValue[4 + i].Set(_cameraFrustumPlanes[i].normal.x, _cameraFrustumPlanes[i].normal.y, _cameraFrustumPlanes[i].normal.z, _cameraFrustumPlanes[i].distance);
-            if(DEBUG)
-            {
-                //Debug.Log("FrustumPlanes:"+ i+"|"+ _cameraFrustumPlanes[i].normal + "|"+ _cameraFrustumPlanes[i].distance);
-            }
         }
 
         GPUDrivenCullCMDBuffer.SetComputeVectorArrayParam(CS_GPUDrivenTerrain, ComputeShaderDefine.globalValueList_P, globalValue);        
@@ -213,14 +209,12 @@ public class GPUDrivenTerrainImpl
 
     public int GetBaseLOD(Camera camera)
     {
-        return (int)math.floor(math.log2(camera.transform.position.y / TerrainDataManager.LodDivideLength)) - 1;
+        return (int)math.floor(math.log2(camera.transform.position.y / TerrainDataManager.LodDivideLength));
     }
 
     BoundsInt mViewChunks = new BoundsInt();
 
     public bool mViewChunkIsDirty = false;
-
-    public int BaseLOD;
 
     public uint[] mInputPatchList;
 
@@ -260,7 +254,7 @@ public class GPUDrivenTerrainImpl
         mInputPatchList = new uint[(curBound.xMax - curBound.xMin + 1) *(curBound.zMax - curBound.zMin + 1)];
 
         int index = 0;
-        for(uint i= (uint)curBound.xMin; i<= curBound.xMax; i++)
+        for (uint i = (uint)curBound.xMin; i <= curBound.xMax; i++)
         {
             for (uint j = (uint)curBound.zMin; j <= curBound.zMax; j++)
             {
@@ -269,10 +263,10 @@ public class GPUDrivenTerrainImpl
                 index++;
             }
         }
+
         TerrainDataManager.GetInstance().GPUCullCMDBuffer = null;
         //if (baseLOD != BaseLOD || curBound != mViewChunks)
         {
-            BaseLOD = baseLOD;
             mViewChunks = curBound;
             TerrainDataManager.GetInstance().GPUCullCMDBuffer = GPUDrivenCullCMDBuffer;
             CopyInputBuffer();
@@ -398,7 +392,7 @@ public class GPUDrivenTerrainImpl
         if(DEBUG)
         {
             mDrawInstanceBuffer.GetData(drawInstanceData);
-            Debug.Log("drawInstanceData count:" + drawInstanceData[0] + "|" + drawInstanceData[1]);
+            //Debug.Log("drawInstanceData count:" + drawInstanceData[0] + "|" + drawInstanceData[1]);
         }
         return mDrawInstanceBuffer;
     }
@@ -406,7 +400,7 @@ public class GPUDrivenTerrainImpl
     public ComputeBuffer GetDebugDrawInstanceArgsBuffer()
     {
         mDebugInstanceArgsBuffer.GetData(debugInstanceArgsData);
-        Debug.Log("mDebugInstanceArgsBuffer count:"+ debugInstanceArgsData[0] + "|" + debugInstanceArgsData[1]);
+        //Debug.Log("mDebugInstanceArgsBuffer count:"+ debugInstanceArgsData[0] + "|" + debugInstanceArgsData[1]);
         return mDebugInstanceArgsBuffer;
     }
 

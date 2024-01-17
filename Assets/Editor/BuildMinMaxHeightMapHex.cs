@@ -84,6 +84,7 @@ public class BuildMinMaxHeightMapHex : EditorWindow
             Graphics.CopyTexture(outputRT, 0, i - 1, inputRT, 0, 0);
 
             computeShader.SetInts("destTexSize", new int[2] { destTexSize.x, destTexSize.y });
+            computeShader.SetInt("curLOD", i);
 
             computeShader.SetTexture(KN_BuildMinMaxHeightMapByMinMaxHeightMap, Shader.PropertyToID("inputMinMaxHeightMap"), inputRT);
             computeShader.SetTexture(KN_BuildMinMaxHeightMapByMinMaxHeightMap, Shader.PropertyToID("outputMinMaxHeightMap"), outputRT, i);

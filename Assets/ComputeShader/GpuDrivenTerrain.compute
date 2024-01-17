@@ -64,9 +64,6 @@ void CopyInputBuffer(uint3 id : SV_DispatchThreadID)
     
     nodeStruct.ChunkXY = uint2(chunkX, chunkY);
     nodeStruct.LOD = InputLOD;
-    float2 nodeSize = GetNodeSizeInLod(gvalue, InputLOD);
-    nodeStruct.boundMax = float3(nodeSize.x * 0.5, 1, nodeSize.y * 0.5);
-    nodeStruct.boundMin = float3(nodeSize.x * -0.5, -1, nodeSize.y * -0.5);
     appendList.Append(nodeStruct);
 }
 
@@ -77,21 +74,18 @@ uint IsNeedQuad(GlobalValue gvalue, NodePatchStruct nodeStruct)
     {
         return 0;
     }
-
-    float2 nodeSize = GetNodeSizeInLod(gvalue, nodeStruct.LOD);
-    float2 nodePos = GetNodeCenerPos(gvalue, nodeStruct.ChunkXY, nodeStruct.LOD);
     
-    float dis = distance(float2(_LODCenter.x,  _LODCenter.z), float2(nodePos.x,  nodePos.y));
-    float fLod = log2(dis / gvalue.LodDivideLength);
-    int iLod = floor(fLod) - 1;
-    iLod = clamp(iLod, 0, gvalue.MIN_LOD);
-    
-    if (uint(iLod) > (nodeStruct.LimitLOD - 1))
+    if (int(nodeStruct.LOD) > (int(nodeStruct.LimitLOD) - 1))
     {
         return 1;
     }
+
+    float2 nodePos = GetNodeCenerPos(gvalue, nodeStruct.ChunkXY, nodeStruct.LOD);
     
-    if (uint(iLod) < nodeStruct.LOD)
+    float dis = distance(float2(_LODCenter.x,_LODCenter.z),float2(nodePos.x, nodePos.y));
+    float factor = dis / (gvalue.LodDivideLength * (1 << nodeStruct.LOD));
+    
+    if (factor < 1)
     {
         return 1;
     }
@@ -102,9 +96,9 @@ uint IsNeedQuad(GlobalValue gvalue, NodePatchStruct nodeStruct)
 void CalNodeBoundAndLimitLOD(GlobalValue gvalue, inout NodePatchStruct nodeStruct)
 {
     float color = MinMaxHeightMap.mips[nodeStruct.LOD][nodeStruct.ChunkXY].r;
-    uint data = uint(color * (1 << 16 - 1));
-    int minStage = ((data >> 10) & 0x3f) - 31;
-    int maxStage = ((data >> 4) & 0x3f) - 31;
+    uint data = uint(color * ((1 << 16) - 1));
+    int minStage = int((data >> 10) & 0x3f) - 31;
+    int maxStage = int((data >> 4) & 0x3f) - 31;
     int LimitLOD = data & 0xf;
     
     float2 minMaxHeight = float2(minStage * gvalue.StageHeight, maxStage * gvalue.StageHeight);
@@ -199,17 +193,17 @@ void GetLoadTrans(inout NodePatchStruct patch, GlobalValue gvalue)
 }
 
 
-bool IsOutSidePlane(float4 plane, float3 position)
+uint IsOutSidePlane(float4 plane, float3 position)
 {
-    return dot(plane.xyz, position) + plane.w < 0;
+    return dot(plane.xyz, position) + plane.w < -10 ? 1 : 0;
 }
 
 //true: avalible
 //flase: culled
 bool FrustumCullBound(float3 minPos, float3 maxPos, float4 planes[6])
-{
+{    
     [unroll]
-    for (int i = 0; i < 6;i++)
+    for (int i = 0; i < 6; i++)
     {
         float3 p = minPos;
         float3 normal = planes[i].xyz;
@@ -238,6 +232,7 @@ void FrustumCull(uint3 groupId : SV_GroupID, uint3 idInGroup : SV_GroupThreadID)
     float4 frustumPlane[6];
     GetFrustumPlane(globalValueList, frustumPlane);
     bool frusAvalible = FrustumCullBound(center3 + nodeStruct.boundMin, center3 + nodeStruct.boundMax, frustumPlane);
+    //bool frusAvalible = FrustumCullBound(center3, center3, frustumPlane);
     if (frusAvalible)
     {
         appendList.Append(nodeStruct);
